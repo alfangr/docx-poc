@@ -444,21 +444,23 @@ function findAnchor(
  * Pencarian bekerja dalam satu baris, jadi teks seperti itu tidak akan cocok.
  */
 function toSingleLine(text: string): string {
-  const lines = text
-    .split(/[\r\n\u2028\u2029]+/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+  const rawLines = text.split(/[\r\n\u2028\u2029]+/);
+  const nonEmptyLines = rawLines.filter((line) => line.trim().length > 0);
 
-  if (lines.length === 0) return "";
+  if (nonEmptyLines.length === 0) return "";
 
-  if (lines.length > 1) {
+  if (nonEmptyLines.length > 1) {
     throw new Error(
-      `Teks pencarian melintasi ${lines.length} baris; pencarian hanya bisa dalam satu paragraf. ` +
-        `Sebut bagian yang lebih spesifik, mis. "${ellipsis(lines[0], 40)}".`,
+      `Teks pencarian melintasi ${nonEmptyLines.length} baris; pencarian hanya bisa dalam satu paragraf. ` +
+        `Sebut bagian yang lebih spesifik, mis. "${ellipsis(nonEmptyLines[0].trim(), 40)}".`,
     );
   }
 
-  return lines[0];
+  // Baris yang tersisa dikembalikan APA ADANYA (tidak di-trim): spasi di
+  // ujung `find` kadang disengaja model untuk menjaga spasi tunggal setelah
+  // sebuah kata/frasa di tengah kalimat dihapus \u2014 men-trim di sini diam-diam
+  // membatalkan itu dan meninggalkan spasi ganda di dokumen.
+  return nonEmptyLines[0];
 }
 
 /** Ubah kegagalan `exec()` jadi kalimat yang bisa ditindaklanjuti user. */

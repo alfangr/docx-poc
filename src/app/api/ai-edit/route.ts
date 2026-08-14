@@ -58,6 +58,7 @@ export const maxDuration = 120;
 const VALID_ACTIONS: readonly AIActionType[] = [
   "summarize",
   "expand",
+  "shorten",
   "fix-grammar",
   "rewrite",
   "translate",

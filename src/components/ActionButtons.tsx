@@ -3,8 +3,8 @@
 /**
  * ActionButtons.tsx
  * -----------------------------------------------------------------------------
- * Tombol quick action AI: Ringkas, Perluas, Perbaiki Tata Bahasa, Tulis Ulang,
- * Terjemahkan.
+ * Tombol quick action AI: Ringkas, Perbaiki Tata Bahasa, Perluas, Persingkat,
+ * Tulis Ulang, Terjemahkan.
  *
  * Komponen ini murni presentasi — dia tidak memanggil AI sendiri, hanya
  * melaporkan aksi mana yang ditekan lewat `onAction`. Semua logikanya
@@ -49,6 +49,7 @@ const ACTION_ORDER: readonly AIActionType[] = [
   "summarize",
   "fix-grammar",
   "expand",
+  "shorten",
   "rewrite",
   "translate",
 ];
@@ -134,7 +135,7 @@ export function ActionButtons({
 // =============================================================================
 
 /**
- * Ikon per aksi. SVG inline, bukan library ikon: lima ikon tidak sebanding
+ * Ikon per aksi. SVG inline, bukan library ikon: enam ikon tidak sebanding
  * dengan menambah satu dependency lagi ke bundle.
  *
  * Semuanya `aria-hidden` — label tekstual di sebelahnya yang membawa makna.
@@ -165,6 +166,17 @@ function ActionIcon({ action }: { action: AIActionType }) {
       return (
         <svg {...common}>
           <path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" />
+        </svg>
+      );
+
+    case "shorten":
+      // Panah menuju pusat — kebalikan visual dari ikon "expand".
+      return (
+        <svg {...common}>
+          <path d="M4 14h6v6" />
+          <path d="M20 10h-6V4" />
+          <path d="M14 10l7-7" />
+          <path d="M3 21l7-7" />
         </svg>
       );
 

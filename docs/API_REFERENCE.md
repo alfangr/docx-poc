@@ -162,26 +162,39 @@ Satu-satunya jalur menuju Gemini. Dua mode, dibedakan dari ada-tidaknya
 | `selectedText` | `string` | tidak | Mempersempit scope edit ke potongan ini |
 | `history` | `SerializedChatMessage[]` | tidak | 10 pesan terakhir dipakai sebagai konteks |
 
-`action` yang valid: `summarize`, `expand`, `fix-grammar`, `rewrite`,
-`translate`.
+`action` yang valid: `summarize`, `expand`, `shorten`, `fix-grammar`,
+`rewrite`, `translate`.
 
 ### Mode EDIT
 
 ```bash
 curl -s -X POST http://localhost:3000/api/ai-edit \
   -H 'Content-Type: application/json' \
-  -d "{\"docBase64\":\"$(base64 -i laporan.docx | tr -d '\n')\",\"action\":\"summarize\"}"
+  -d "{\"docBase64\":\"$(base64 -i laporan.docx | tr -d '\n')\",\"action\":\"shorten\"}"
 ```
 
 ```json
 {
   "success": true,
   "edits": [
-    { "type": "insert", "text": "Ringkasan\nPenjualan naik 18%...", "index": 0 },
-    { "type": "replace", "find": "naik 18 persen", "replace": "naik 18%" }
+    { "type": "replace", "find": "Penjualan mengalami kenaikan sebesar 18 persen dibandingkan kuartal sebelumnya.", "replace": "Penjualan naik 18% dari kuartal sebelumnya." }
   ],
-  "summary": "Saya menambahkan ringkasan di awal dokumen.",
+  "summary": "Saya memadatkan beberapa kalimat yang bertele-tele.",
   "usage": { "promptTokens": 812, "responseTokens": 143, "totalTokens": 955 }
+}
+```
+
+**Pengecualian: `action: "summarize"` tidak pernah menghasilkan `edits`.**
+Aksi ini read-only secara teknis — tool editing tidak dipasang sama sekali,
+jadi model tidak punya cara mengubah dokumen. `edits` selalu `[]`; ringkasannya
+cuma muncul di `summary` untuk ditampilkan di panel chat.
+
+```json
+{
+  "success": true,
+  "edits": [],
+  "summary": "Dokumen ini membahas kenaikan penjualan kuartalan sebesar 18%...",
+  "usage": { "promptTokens": 640, "responseTokens": 98, "totalTokens": 738 }
 }
 ```
 
@@ -210,7 +223,7 @@ dokumen. Diminta mengubah pun, dia menolak dan mengarahkan user ke mode "Ubah".
 
 ### Pesan bebas — `mode: "edit"`
 
-Instruksi perubahan dengan kalimat sendiri, di luar 5 quick action.
+Instruksi perubahan dengan kalimat sendiri, di luar 6 quick action.
 
 ```bash
 curl -s -X POST http://localhost:3000/api/ai-edit \

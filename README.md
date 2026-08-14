@@ -17,11 +17,11 @@ npm run dev
 
 - **Buka & edit .docx** — WYSIWYG penuh: toolbar, ruler, style paragraf, font,
   tabel, komentar
-- **5 aksi AI satu klik** — Ringkas, Perbaiki Tata Bahasa, Perluas, Tulis Ulang,
-  Terjemahkan
+- **6 aksi AI satu klik** — Ringkas, Perbaiki Tata Bahasa, Perluas, Persingkat,
+  Tulis Ulang, Terjemahkan
 - **Chat dua mode** — dropdown di atas kotak pesan: **Tanya** (AI hanya
   membaca) atau **Ubah** (perintah edit dengan kalimatmu sendiri, di luar
-  5 aksi preset)
+  6 aksi preset)
 - **Edit terarah** — seleksi sebagian teks, dan aksi AI hanya berlaku di situ
 - **Download .docx** — hasilnya tetap terbaca Microsoft Word
 

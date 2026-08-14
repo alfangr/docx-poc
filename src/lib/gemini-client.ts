@@ -171,6 +171,23 @@ export const AI_ACTIONS: Record<string, AIAction> = {
       "Use replace_text to rewrite existing paragraphs in place rather than " +
       "appending a separate section.",
   },
+  shorten: {
+    type: "shorten",
+    description: "Shorten the document by tightening wordy sentences",
+    prompt:
+      "Condense the document content below: remove redundant phrases, " +
+      "filler words, and repetitive wording, while preserving every fact, " +
+      "number, and named entity. IMPORTANT: a single wordy sentence is " +
+      "often itself longer than the 255-character `find` limit, so do NOT " +
+      "target a whole sentence or paragraph as one replace_text call. " +
+      "Instead make several small, localized replace_text or delete_text " +
+      "calls, each targeting one short redundant phrase or clause (e.g. " +
+      "delete \"Sehubungan dengan hal tersebut di atas, \" or shorten " +
+      "\"dengan ini kami ingin menyampaikan dan memberitahukan\" to " +
+      "\"kami sampaikan\") — a long sentence gets shortened through several " +
+      "small edits, not one big rewrite. Do not delete entire sections or " +
+      "change the meaning.",
+  },
   fixGrammar: {
     type: "fix-grammar",
     description: "Fix grammar and spelling errors",
@@ -401,7 +418,10 @@ export async function editDocumentWithAI(
   });
 
   const toolCalls = isReadOnly ? [] : extractToolCalls(response);
-  const edits = toolCallsToEditOperations(toolCalls);
+  const edits = normalizeEditWhitespace(
+    toolCallsToEditOperations(toolCalls),
+    documentText,
+  );
 
   // Model membalas teks saja tanpa satu pun function call -> tidak ada yang bisa
   // diterapkan. Bukan error fatal: kembalikan teksnya sebagai summary supaya
@@ -529,7 +549,10 @@ export async function converseWithDocument(
   });
 
   const toolCalls = isEditMode ? extractToolCalls(response) : [];
-  const edits = toolCallsToEditOperations(toolCalls);
+  const edits = normalizeEditWhitespace(
+    toolCallsToEditOperations(toolCalls),
+    documentText,
+  );
   const reply = extractText(response);
 
   if (!reply && edits.length === 0) {
@@ -559,8 +582,9 @@ const EDIT_SYSTEM_INSTRUCTION = `You are a document editing assistant operating 
 Rules you MUST follow:
 1. Express EVERY change as a function call. Never describe an edit in prose and expect it to be applied.
 2. When targeting existing content, copy the \`find\` string verbatim from the document — exact characters, punctuation, and capitalization. A mismatch means the edit is silently dropped.
-3. Keep each \`find\` snippet short but unique: prefer a single sentence or phrase over a whole paragraph.
+3. Keep each \`find\` snippet short but unique: prefer a single sentence or phrase over a whole paragraph. A \`find\` longer than 255 characters is REJECTED outright — if the sentence you want to target is itself longer than that, target a shorter clause or phrase within it instead of quoting the whole sentence.
 3b. A \`find\` value MUST be a SINGLE LINE. Never include a line break in it. Some paragraphs contain line breaks (address blocks, multi-line headings) — pick ONE line from them, not the whole block.
+3c. When deleting or shortening a word/phrase from the MIDDLE of a sentence, include exactly one flanking space in the \`find\` (a leading or trailing space) so removing it doesn't leave a double space behind. If shortening rather than deleting, make sure the \`replace\` value keeps single spacing and no dangling punctuation at the boundary (e.g. no leftover ", ," or "  ").
 4. Never invent facts, numbers, dates, or names that are not already in the document.
 4b. EXCEPTION — when the user explicitly asks you to DRAFT or GENERATE new content (a template, a new section, a document from scratch), inventing is the point. But use clearly marked placeholders for anything that would be real data: [Nama], [Jabatan], [Tanggal], [Nomor Surat], [NPWP]. Never fabricate realistic-looking names, ID numbers, dates, or amounts — a regulatory document filled with plausible fake data is far more dangerous than one with obvious blanks.
 5. Emit at most 25 function calls per response. If more changes are needed, make the most important ones and say so in your text reply.
@@ -592,8 +616,9 @@ const INSTRUCT_SYSTEM_INSTRUCTION = `You are editing a Word (.docx) document fro
 Rules you MUST follow:
 1. Express EVERY change as a function call. Never describe an edit in prose and expect it to be applied.
 2. Copy the "find" string VERBATIM from the document — exact characters, punctuation, and capitalization. A mismatch means the edit is silently dropped.
-3. Keep each "find" snippet short but unique: prefer a single sentence or phrase over a whole paragraph.
+3. Keep each "find" snippet short but unique: prefer a single sentence or phrase over a whole paragraph. A "find" longer than 255 characters is REJECTED outright — if the sentence you want to target is itself longer than that, target a shorter clause or phrase within it instead of quoting the whole sentence.
 3b. A "find" value MUST be a SINGLE LINE. Never include a line break in it. Some paragraphs contain line breaks (address blocks, multi-line headings) — pick ONE line from them, not the whole block.
+3c. When deleting or shortening a word/phrase from the MIDDLE of a sentence, include exactly one flanking space in the "find" (a leading or trailing space) so removing it doesn't leave a double space behind. If shortening rather than deleting, make sure the "replace" value keeps single spacing and no dangling punctuation at the boundary (e.g. no leftover ", ," or "  ").
 4. Do exactly what was asked, no more. Do not fix, improve, or restructure anything the user did not mention.
 5. If the instruction is ambiguous or the target text does not exist, ASK a clarifying question in plain text instead of guessing. Do not call any function in that case.
 6. Never invent facts, numbers, dates, or names that are not already in the document.
@@ -877,6 +902,61 @@ function toolCallsToEditOperations(
   }
 
   return edits;
+}
+
+/**
+ * Perbaiki artefak spasi yang muncul saat model MENGHAPUS TOTAL sebuah kata/
+ * frasa di tengah kalimat (`delete_text`, atau `replace_text` dengan
+ * `replace` kosong) tanpa menyertakan satu spasi pemisah di `find`. Begitu
+ * `find` lenyap, dua spasi tunggal asli yang tadinya memisahkannya dari kata
+ * sebelum/sesudahnya jadi bersebelahan (spasi ganda), atau menggantung di
+ * depan tanda baca berikutnya.
+ *
+ * PENTING: ini HANYA relevan untuk penghapusan total. Kalau `replace` berisi
+ * teks pengganti (substitusi biasa), spasi asli di kedua sisi `find` tetap
+ * terpisah secara alami tanpa perlu disentuh — menganggapnya berisiko sama
+ * seperti penghapusan justru MENGHILANGKAN satu spasi (bug baru), karena
+ * spasi yang "diserap" ke `find` tidak pernah dikembalikan lewat `replace`.
+ *
+ * Sistem instruksi sudah minta model menghindari ini sendiri, tapi
+ * kepatuhannya tidak 100% — ini jaring pengaman deterministik di kode,
+ * dicek terhadap teks dokumen ASLI yang dilihat model, supaya tidak
+ * menyentuh spasi yang memang sudah ada apa adanya di dokumennya sendiri.
+ */
+function normalizeEditWhitespace(
+  edits: readonly EditOperation[],
+  docText: string,
+): EditOperation[] {
+  return edits.map((edit) => {
+    if (edit.type !== "replace" && edit.type !== "delete") return edit;
+
+    const replace = edit.type === "replace" ? edit.replace ?? "" : "";
+    if (replace !== "") return edit; // substitusi biasa -> spasi sudah aman
+
+    const find = edit.find ?? "";
+    if (/^\s|\s$/.test(find)) return edit; // model sudah menanganinya sendiri
+
+    const idx = docText.indexOf(find);
+    if (idx === -1) return edit; // biarkan; penerapan yang urus "tidak ditemukan"
+
+    const before = docText[idx - 1];
+    const after = docText[idx + find.length];
+
+    // Kedua sisi aslinya berspasi tunggal -> begitu `find` lenyap, keduanya
+    // jadi bersebelahan. Serap satu spasi ke dalam `find` supaya cuma
+    // tersisa satu.
+    if (before === " " && after === " ") {
+      return { ...edit, find: find + " " };
+    }
+
+    // Dihapus tepat sebelum tanda baca (mis. "nasabah [dihapus].") -> spasi
+    // sebelumnya jadi menggantung di depan tanda baca. Serap spasi itu juga.
+    if (before === " " && after !== undefined && /[.,;:!?]/.test(after)) {
+      return { ...edit, find: " " + find };
+    }
+
+    return edit;
+  });
 }
 
 /**

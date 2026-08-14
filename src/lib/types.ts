@@ -136,6 +136,7 @@ export interface SerializedChatMessage extends Omit<ChatMessage, "timestamp"> {
 export type AIActionType =
   | "summarize"
   | "expand"
+  | "shorten"
   | "fix-grammar"
   | "rewrite"
   | "translate";
@@ -171,6 +172,10 @@ export const AI_ACTION_LABELS: Record<AIActionType, AIActionLabel> = {
   expand: {
     label: "Perluas",
     description: "Kembangkan isi dengan detail dan contoh tambahan",
+  },
+  shorten: {
+    label: "Persingkat",
+    description: "Padatkan kalimat yang bertele-tele tanpa mengubah makna",
   },
   "fix-grammar": {
     label: "Perbaiki Tata Bahasa",
