@@ -1,0 +1,33 @@
+{
+  "name": "docx-editor-poc",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@docx-editor.dev/core": "^2.2.1",
+    "@docx-editor.dev/editor-api": "^2.2.1",
+    "@docx-editor.dev/react": "^2.2.1",
+    "@google/genai": "^2.16.0",
+    "docx": "^9.7.1",
+    "file-saver": "^2.0.5",
+    "mammoth": "^1.12.1",
+    "next": "^16.3.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/file-saver": "^2.0.7",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3"
+  }
+}
