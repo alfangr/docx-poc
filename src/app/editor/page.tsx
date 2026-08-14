@@ -369,6 +369,7 @@ export default function EditorPage() {
                 isLoading={recent.isLoading}
                 error={recent.error}
                 onLoad={(id) => void handleLoadRecent(id)}
+                onToggleFavorite={(id) => void recent.toggleFavorite(id)}
                 onDelete={(id) => void recent.deleteEntry(id)}
                 onDismissError={recent.dismissError}
               />

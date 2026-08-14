@@ -13,13 +13,17 @@
 
 import { useMemo, useState } from "react";
 
-import type { RecentDocumentEntry } from "@/hooks/useRecentDocuments";
+import {
+  MAX_FAVORITE_ENTRIES,
+  type RecentDocumentEntry,
+} from "@/hooks/useRecentDocuments";
 
 export interface RecentGeneratedPanelProps {
   entries: RecentDocumentEntry[];
   isLoading: boolean;
   error: string | null;
   onLoad: (id: string) => void;
+  onToggleFavorite: (id: string) => void;
   onDelete: (id: string) => void;
   onDismissError: () => void;
   className?: string;
@@ -30,6 +34,7 @@ export function RecentGeneratedPanel({
   isLoading,
   error,
   onLoad,
+  onToggleFavorite,
   onDelete,
   onDismissError,
   className = "",
@@ -44,13 +49,33 @@ export function RecentGeneratedPanel({
     return entries.filter((entry) => entry.fileName.toLowerCase().includes(needle));
   }, [entries, query]);
 
+  const favoriteEntries = useMemo(
+    () =>
+      entries
+        .filter((entry) => entry.isFavorite)
+        .sort((a, b) =>
+          (b.favoritedAt ?? b.generatedAt).localeCompare(
+            a.favoritedAt ?? a.generatedAt,
+          ),
+        )
+        .slice(0, MAX_FAVORITE_ENTRIES),
+    [entries],
+  );
+
   return (
     <aside
       className={`flex h-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white ${className}`}
       aria-label="Riwayat generate"
     >
       <header className="flex flex-col gap-2 border-b border-slate-200 px-4 py-3">
-        <h2 className="text-sm font-semibold text-slate-800">Riwayat Generate</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-slate-800">Riwayat Generate</h2>
+          {entries.length > 0 && (
+            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-amber-200">
+              {favoriteEntries.length}/{MAX_FAVORITE_ENTRIES} favorit
+            </span>
+          )}
+        </div>
         {/* Search hanya berguna kalau ada lebih dari segelintir entri —
             disembunyikan saat riwayat masih kosong supaya tidak menambah
             elemen yang tidak ada gunanya di EmptyState. */}
@@ -59,22 +84,47 @@ export function RecentGeneratedPanel({
         )}
       </header>
 
-      <div className="flex-1 space-y-2 overflow-y-auto p-3">
+      <div className="flex-1 overflow-y-auto">
         {isLoading ? (
-          <p className="px-1 py-4 text-center text-xs text-slate-400">Memuat riwayat…</p>
+          <p className="px-4 py-7 text-center text-xs text-slate-400">Memuat riwayat…</p>
         ) : entries.length === 0 ? (
           <EmptyState />
-        ) : filteredEntries.length === 0 ? (
-          <NoResultsState query={query} onClear={() => setQuery("")} />
         ) : (
-          filteredEntries.map((entry) => (
-            <RecentDocumentRow
-              key={entry.id}
-              entry={entry}
+          <>
+            <QuickAccess
+              entries={favoriteEntries}
               onLoad={onLoad}
-              onDelete={onDelete}
+              onToggleFavorite={onToggleFavorite}
             />
-          ))
+
+            <section className="border-t border-slate-100 p-3" aria-labelledby="all-history-title">
+              <div className="mb-2 flex items-center justify-between">
+                <h3
+                  id="all-history-title"
+                  className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400"
+                >
+                  Semua riwayat
+                </h3>
+                <span className="text-[11px] text-slate-400">{filteredEntries.length} dokumen</span>
+              </div>
+
+              {filteredEntries.length === 0 ? (
+                <NoResultsState query={query} onClear={() => setQuery("")} />
+              ) : (
+                <div className="space-y-2">
+                  {filteredEntries.map((entry) => (
+                    <RecentDocumentRow
+                      key={entry.id}
+                      entry={entry}
+                      onLoad={onLoad}
+                      onToggleFavorite={onToggleFavorite}
+                      onDelete={onDelete}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          </>
         )}
       </div>
 
@@ -101,10 +151,12 @@ export function RecentGeneratedPanel({
 function RecentDocumentRow({
   entry,
   onLoad,
+  onToggleFavorite,
   onDelete,
 }: {
   entry: RecentDocumentEntry;
   onLoad: (id: string) => void;
+  onToggleFavorite: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
   return (
@@ -120,6 +172,8 @@ function RecentDocumentRow({
         >
           {entry.fileName}
         </p>
+
+        <FavoriteButton entry={entry} onToggle={onToggleFavorite} />
 
         <button
           type="button"
@@ -155,6 +209,125 @@ function RecentDocumentRow({
         </button>
       </div>
     </div>
+  );
+}
+
+function QuickAccess({
+  entries,
+  onLoad,
+  onToggleFavorite,
+}: {
+  entries: RecentDocumentEntry[];
+  onLoad: (id: string) => void;
+  onToggleFavorite: (id: string) => void;
+}) {
+  return (
+    <section className="bg-gradient-to-b from-amber-50/80 to-white p-3" aria-labelledby="quick-access-title">
+      <div className="mb-2 flex items-start justify-between gap-3">
+        <div>
+          <h3 id="quick-access-title" className="text-xs font-bold text-slate-800">
+            Quick Access
+          </h3>
+          <p className="mt-0.5 text-[10px] leading-4 text-slate-500">
+            Favorit siap dimuat tanpa perlu mencari.
+          </p>
+        </div>
+        <StarIcon filled className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+      </div>
+
+      {entries.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-amber-200 bg-white/70 px-3 py-3 text-center">
+          <p className="text-[11px] font-medium text-slate-600">Belum ada favorit</p>
+          <p className="mt-0.5 text-[10px] text-slate-400">
+            Tekan ikon bintang pada riwayat untuk menambahkannya.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          {entries.map((entry) => (
+            <article
+              key={entry.id}
+              className="group relative min-w-0 rounded-lg border border-amber-200 bg-white p-2.5 shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md"
+            >
+              <button
+                type="button"
+                onClick={() => onToggleFavorite(entry.id)}
+                aria-label={`Hapus ${entry.fileName} dari Quick Access`}
+                title="Hapus dari Quick Access"
+                className="absolute right-1.5 top-1.5 rounded-md p-1 text-amber-500 hover:bg-amber-50 focus-visible:ring-2 focus-visible:ring-amber-500"
+              >
+                <StarIcon filled className="h-3.5 w-3.5" />
+              </button>
+              <p className="line-clamp-2 min-h-8 break-words pr-6 text-[11px] font-semibold leading-4 text-slate-800" title={entry.fileName}>
+                {entry.fileName}
+              </p>
+              <p className="mt-1 truncate text-[9px] text-slate-400">
+                {formatDate(entry.generatedAt)}
+              </p>
+              <button
+                type="button"
+                onClick={() => onLoad(entry.id)}
+                className="mt-2 w-full rounded-md bg-slate-900 px-2 py-1.5 text-[10px] font-semibold text-white transition hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
+              >
+                Load dokumen
+              </button>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function FavoriteButton({
+  entry,
+  onToggle,
+}: {
+  entry: RecentDocumentEntry;
+  onToggle: (id: string) => void;
+}) {
+  const label = entry.isFavorite
+    ? `Hapus ${entry.fileName} dari Quick Access`
+    : `Tambahkan ${entry.fileName} ke Quick Access`;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(entry.id)}
+      aria-label={label}
+      aria-pressed={entry.isFavorite}
+      title={entry.isFavorite ? "Hapus dari Quick Access" : "Tambahkan ke Quick Access"}
+      className={`shrink-0 rounded-md border p-1 transition-colors focus-visible:ring-2 focus-visible:ring-amber-500 ${
+        entry.isFavorite
+          ? "border-amber-200 bg-amber-50 text-amber-500 hover:bg-amber-100"
+          : "border-slate-200 bg-white text-slate-400 hover:border-amber-200 hover:bg-amber-50 hover:text-amber-500"
+      }`}
+    >
+      <StarIcon filled={entry.isFavorite} className="h-3.5 w-3.5" />
+    </button>
+  );
+}
+
+function StarIcon({
+  filled = false,
+  className = "",
+}: {
+  filled?: boolean;
+  className?: string;
+}) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m12 2.8 2.75 5.57 6.15.9-4.45 4.33 1.05 6.12L12 16.83l-5.5 2.89 1.05-6.12L3.1 9.27l6.15-.9L12 2.8Z" />
+    </svg>
   );
 }
 

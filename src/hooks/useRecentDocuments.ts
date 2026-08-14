@@ -28,6 +28,9 @@ const STORE_NAME = "recent-documents";
 /** Batas jumlah entri tersimpan; entri tertua dibuang begitu terlampaui. */
 const MAX_ENTRIES = 30;
 
+/** Batas favorit sengaja kecil agar Quick Access tetap benar-benar ringkas. */
+export const MAX_FAVORITE_ENTRIES = 4;
+
 // =============================================================================
 // Tipe
 // =============================================================================
@@ -42,6 +45,9 @@ export interface RecentDocumentEntry {
   size: number;
   /** ISO 8601. */
   generatedAt: string;
+  isFavorite: boolean;
+  /** Dipakai untuk mengurutkan favorit yang terakhir dipasang. */
+  favoritedAt?: string;
 }
 
 interface RecentDocumentRecord extends RecentDocumentEntry {
@@ -55,6 +61,7 @@ export interface UseRecentDocumentsResult {
 
   addEntry: (fileName: string, buffer: ArrayBuffer) => Promise<void>;
   deleteEntry: (id: string) => Promise<void>;
+  toggleFavorite: (id: string) => Promise<void>;
   loadEntryBuffer: (
     id: string,
   ) => Promise<{ fileName: string; data: ArrayBuffer } | null>;
@@ -145,7 +152,7 @@ function extractBaseName(fileName: string): string {
 
 function toMetadata(record: RecentDocumentRecord): RecentDocumentEntry {
   const { data: _data, ...metadata } = record;
-  return metadata;
+  return { ...metadata, isFavorite: metadata.isFavorite ?? false };
 }
 
 // =============================================================================
@@ -212,6 +219,7 @@ export function useRecentDocuments(): UseRecentDocumentsResult {
           fileName: `${baseName} (v${version}).docx`,
           size: buffer.byteLength,
           generatedAt: new Date().toISOString(),
+          isFavorite: false,
           data: buffer,
         };
 
@@ -219,7 +227,11 @@ export function useRecentDocuments(): UseRecentDocumentsResult {
 
         const all = await getAllRecords(db);
         if (all.length > MAX_ENTRIES) {
+          // Favorit adalah jalur cepat milik user, jadi jangan hilangkan diam-diam
+          // saat batas riwayat tercapai. Empat slot favorit memastikan selalu ada
+          // cukup entri non-favorit yang bisa dipangkas terlebih dahulu.
           const oldest = all
+            .filter((entry) => !entry.isFavorite)
             .sort((a, b) => a.generatedAt.localeCompare(b.generatedAt))
             .slice(0, all.length - MAX_ENTRIES)
             .map((r) => r.id);
@@ -249,6 +261,51 @@ export function useRecentDocuments(): UseRecentDocumentsResult {
     [getDb],
   );
 
+  const toggleFavorite = useCallback(
+    async (id: string) => {
+      try {
+        const db = await getDb();
+        const record = await getRecord(db, id);
+        if (!record) return;
+
+        const isFavorite = record.isFavorite ?? false;
+        if (!isFavorite) {
+          const all = await getAllRecords(db);
+          const favoriteCount = all.filter((entry) => entry.isFavorite).length;
+          if (favoriteCount >= MAX_FAVORITE_ENTRIES) {
+            setError(
+              `Quick Access maksimal ${MAX_FAVORITE_ENTRIES} dokumen. Hapus salah satu favorit terlebih dahulu.`,
+            );
+            return;
+          }
+        }
+
+        const updated: RecentDocumentRecord = {
+          ...record,
+          isFavorite: !isFavorite,
+          favoritedAt: isFavorite ? undefined : new Date().toISOString(),
+        };
+        await putRecord(db, updated);
+        setEntries((previous) =>
+          previous.map((entry) =>
+            entry.id === id
+              ? {
+                  ...entry,
+                  isFavorite: updated.isFavorite,
+                  favoritedAt: updated.favoritedAt,
+                }
+              : entry,
+          ),
+        );
+        setError(null);
+      } catch (err) {
+        console.error("[useRecentDocuments] Gagal mengubah favorit:", err);
+        setError("Gagal memperbarui favorit dokumen.");
+      }
+    },
+    [getDb],
+  );
+
   const loadEntryBuffer = useCallback(
     async (id: string) => {
       try {
@@ -273,6 +330,7 @@ export function useRecentDocuments(): UseRecentDocumentsResult {
     error,
     addEntry,
     deleteEntry,
+    toggleFavorite,
     loadEntryBuffer,
     dismissError,
   };
