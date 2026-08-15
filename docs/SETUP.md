@@ -107,6 +107,11 @@ Kalau `geminiConfigured: false`, lihat
 - [ ] `npm run dev` jalan
 - [ ] Halaman depan menampilkan banner **hijau**
 - [ ] Klik **Dokumen Baru** → editor muncul lengkap dengan toolbar dan ruler
+- [ ] Klik **Generate** → file terunduh dan entri baru muncul di tab
+  **Riwayat Generate**
+- [ ] Klik ikon bintang pada riwayat → dokumen muncul di **Quick Access** dan
+  tetap ada setelah halaman dimuat ulang
+- [ ] Favorit kelima ditolak dengan pesan batas maksimal 4 dokumen
 - [ ] Ketik sesuatu → status bar berubah jadi **"Ada perubahan"**
 - [ ] Klik **Ringkas** → ringkasan tersisip ke dokumen
 - [ ] Dropdown di atas kotak pesan → pilih **Ubah**, ketik perintah sendiri

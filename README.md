@@ -24,6 +24,10 @@ npm run dev
   6 aksi preset)
 - **Edit terarah** — seleksi sebagian teks, dan aksi AI hanya berlaku di situ
 - **Download .docx** — hasilnya tetap terbaca Microsoft Word
+- **Riwayat generate** — setiap hasil generate disimpan sebagai versi baru di
+  IndexedDB dan dapat dimuat kembali ke editor
+- **Quick Access favorit** — tandai hingga 4 hasil generate agar bisa langsung
+  di-load tanpa mencarinya di seluruh riwayat
 
 Perubahan dari AI diterapkan sebagai operasi edit sungguhan pada dokumen hidup,
 lalu dilaporkan apa adanya: *"⚠️ 8 dari 10 perubahan diterapkan. 2 dilewati:
@@ -62,6 +66,10 @@ useAIChat                        │  GEMINI_API_KEY tidak pernah
   rate limit 15/menit            │  meninggalkan server
   riwayat, retry                 │
                                  │
+useRecentDocuments              │
+  30 versi di IndexedDB          │
+  maks. 4 favorit Quick Access   │
+                                 │
 editor-api-utils                 │
   terapkan EditOperation[]       │
 ```
@@ -81,7 +89,7 @@ klik Ringkas
 
 ---
 
-## Tiga keputusan yang menentukan
+## Empat keputusan yang menentukan
 
 **1. Editor memiliki dokumen setelah mount.**
 `docBuffer` hanya sumber saat mount, tidak pernah didorong balik tiap render.
@@ -113,10 +121,13 @@ src/
 ├── components/
 │   ├── DocxEditorViewer.tsx  pembungkus editor + jembatan event
 │   ├── AIChatSidebar.tsx     chat, quick action, kuota
+│   ├── RecentGeneratedPanel.tsx
+│   │                         riwayat + Quick Access favorit
 │   ├── ActionButtons.tsx
 │   └── LoadingSpinner.tsx
 ├── hooks/
 │   ├── useDocxDocument.ts    state dokumen, auto-save
+│   ├── useRecentDocuments.ts riwayat generated di IndexedDB
 │   └── useAIChat.ts          percakapan, rate limit
 ├── lib/
 │   ├── types.ts              kontrak bersama
@@ -177,7 +188,8 @@ Detail lengkap beserta perintah apa saja yang ditolak editor hidup ada di
 
 | Hal | Kondisi |
 |---|---|
-| Penyimpanan | Memori + localStorage. **Tidak ada database** |
+| Penyimpanan | Dokumen aktif di memori/localStorage; riwayat generate di IndexedDB. **Tidak ada database server** |
+| Riwayat generate | Maks. 30 versi; favorit Quick Access maks. 4 dokumen |
 | Auto-save | Hanya dokumen < 3 MB |
 | Ukuran file | Maks 10 MB |
 | Kuota AI | 15/menit, 1.500/hari (free tier) |
