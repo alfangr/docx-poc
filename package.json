@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@docx-editor.dev/core": "^2.2.1",
-    "@docx-editor.dev/editor-api": "^2.2.1",
     "@docx-editor.dev/react": "^2.2.1",
     "@google/genai": "^2.16.0",
     "docx": "^9.7.1",

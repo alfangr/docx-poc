@@ -198,8 +198,8 @@ cuma muncul di `summary` untuk ditampilkan di panel chat.
 }
 ```
 
-`edits` diterapkan **di client** lewat `applyEditsToDocument()`, bukan di
-server — server tidak memegang dokumen hidup milik editor.
+`edits` diterapkan **di client** lewat `applyEditsWithCore()`, bukan di server—
+server tidak memegang dokumen hidup milik editor.
 
 ### Pesan bebas — `mode: "chat"` (default)
 
@@ -255,16 +255,10 @@ jatuh ke `"chat"`. Default-nya sengaja yang read-only.
 | `insert` | `text` | Sisip paragraf. `index` opsional (0 = paling atas, kosong = akhir) |
 | `replace` | `find`, `replace` | Ganti kemunculan **pertama** |
 | `delete` | `find` | Hapus kemunculan pertama |
-| `format` | `find`, `formatting` | `bold`, `italic`, `size`, `color` |
+| `format` | `find`, `formatting` | `bold`, `italic`, `underline`, `size`, `color` |
 
 Semua target berupa **teks literal**, bukan index numerik — LLM konsisten
 salah menghitung posisi blok, tapi andal menyalin teks apa adanya.
-
-> **`underline` tidak didukung.** `Font` di editor-api hanya mengekspos `bold`,
-> `italic`, `color`, `name`, dan `size`. Permintaan underline diabaikan dengan
-> peringatan di console, bukan dijadikan error.
-
----
 
 ## Batas & kuota
 
@@ -274,7 +268,7 @@ salah menghitung posisi blok, tapi andal menyalin teks apa adanya.
 | Isi dokumen ke AI | 60.000 karakter | `gemini-client.ts` (dipotong) |
 | Panjang pesan user | 4.000 karakter | Client + server |
 | Function call per respons | 25 | Instruksi sistem |
-| Pencarian teks (`find`) | 255 karakter | `editor-api-utils.ts` |
+| Pencarian teks (`find`) | 255 karakter | `editor-core-utils.ts` |
 | Permintaan Gemini | berbeda per model | Rate limit client (15/menit) + Google |
 | Model | `gemini-3.6-flash` (ubah via `GEMINI_MODEL`) | `gemini-client.ts` |
 | Timeout request | 60 detik | `gemini-client.ts` |

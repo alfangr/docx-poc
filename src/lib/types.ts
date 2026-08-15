@@ -202,7 +202,7 @@ export interface TextFormatting {
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
-  /** Ukuran font dalam point (half-point conversion ditangani editor-api). */
+  /** Ukuran font dalam point (dikonversi ke half-point oleh editor core). */
   size?: number;
   /** Warna hex tanpa "#", mis. "FF0000". */
   color?: string;
@@ -217,8 +217,8 @@ export interface TextFormatting {
  * - delete  -> `find` wajib
  * - format  -> `find` + `formatting` wajib
  *
- * Validasi runtime-nya ada di `editor-api-utils.ts`; `isValidEditOperation()`
- * di bawah dipakai sebagai type guard sebelum edit diterapkan.
+ * `isValidEditOperation()` di bawah dipakai sebagai type guard sebelum edit
+ * diterapkan oleh editor core.
  */
 export interface EditOperation {
   type: EditOperationType;
@@ -265,19 +265,6 @@ export function isValidEditOperation(value: unknown): value is EditOperation {
       return false;
   }
 }
-
-/**
- * Mesin yang dipakai untuk menerapkan edit ke dokumen hidup.
- *
- * - `editor-api` — `@docx-editor.dev/editor-api`. Lisensi evaluasi EigenPal;
- *   produksi butuh perjanjian komersial.
- * - `core`       — `editor.exec()` dari `@docx-editor.dev/core`. Apache-2.0,
- *   bebas dipakai di produksi.
- *
- * Keduanya menerima `EditOperation[]` yang sama dan mengembalikan
- * `ApplyEditsResult` yang sama, jadi bisa ditukar tanpa menyentuh UI.
- */
-export type EditEngine = "editor-api" | "core";
 
 /** Satu edit yang tidak berhasil diterapkan, beserta alasannya. */
 export interface SkippedEdit {

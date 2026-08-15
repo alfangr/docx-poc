@@ -131,49 +131,6 @@ editor hidup. Jangan ganti balik jadi nilai.
 - Teks `find` melebihi 255 karakter → dilewati dengan pesan jelas
 - Dokumen berubah di antara baca dan tulis → `StaleDocument` (biasanya karena
   user mengetik saat AI bekerja)
-- AI meminta `underline`, yang tidak didukung `Font` di editor-api
-
-### `InvalidArgument (document.body.search.text)`
-
-Chat membalas `⚠️ 0 dari 1 perubahan diterapkan. 1 dilewati: InvalidArgument:
-the argument is not one this API accepts. (document.body.search.text)`.
-
-**Sebab: argumen `load()`, BUKAN argumen `search()`.**
-
-Target error-nya sangat menyesatkan. `document.body.search` adalah label
-KOLEKSI HASIL pencarian; akhiran `.text` datang dari properti yang diminta
-`load()`. Jadi yang ditolak adalah ini:
-
-```ts
-const results = context.document.body.search(needle, { matchCase: true });
-results.load("text");   // ← SALAH: koleksi hasil tidak punya properti `text`
-```
-
-Bentuk yang benar, dan yang dipakai README editor-api:
-
-```ts
-results.load();         // tanpa argumen — cukup alamat item-nya
-await context.sync();
-const first = results.items[0];
-```
-
-Berlaku juga untuk `body.paragraphs.load()`.
-
-**Kenapa lama tidak ketahuan:** aksi **Ringkas** memakai `insertParagraph`, yang
-tidak menyentuh `search()` sama sekali — jadi jalur itu berhasil sejak awal.
-Setiap operasi berbasis pencarian (`replace`, `delete`, `format`) gagal, dan
-itu mencakup Perbaiki Tata Bahasa, Tulis Ulang, Terjemahkan, serta semua
-perintah edit bebas dari chat.
-
-Validator pencarian di engine sendiri sangat longgar:
-
-```js
-function yA(e){ return typeof e === "string" && e.length > 0 && e.length <= 256 }
-```
-
-Hanya: string, tidak kosong, maksimal 256 karakter. Tidak ada larangan
-line break di situ — jadi kalau menemui error ini, **jangan** mencurigai isi
-teks pencarian lebih dulu; periksa `load()`.
 
 ---
 
@@ -187,7 +144,7 @@ Engine tidak menolaknya, tapi pencarian bekerja **di dalam satu baris**, jadi
 teks seperti itu tidak akan pernah cocok — hasilnya "teks tidak ditemukan"
 tanpa petunjuk kenapa.
 
-`toSingleLine()` di `editor-api-utils.ts` mengubahnya jadi error yang jelas,
+`toSingleLine()` di `editor-core-utils.ts` mengubahnya jadi error yang jelas,
 dan tetap meloloskan kasus tersering (AI menambahkan newline di ujung). Schema
 tool juga sudah menyatakan `find` wajib satu baris.
 
@@ -197,43 +154,16 @@ Teks PENGGANTI berbeda: di sana line break benar-benar ditolak engine
 
 ---
 
-### `ConflictingChanges` atau `InvalidObjectPath` saat menyisipkan teks
+## Penerapan edit dengan editor core
 
-```
-ConflictingChanges: two changes in this batch affect the same paragraph.
-Split them across two context.sync() calls.
+Aplikasi hanya memakai `@docx-editor.dev/core` berlisensi Apache-2.0 untuk
+menerapkan `EditOperation[]`. Tidak ada plugin editor komersial.
 
-InvalidObjectPath: the object cannot be addressed. An object an item accessor
-answered is usable after the next await context.sync().
-```
-
-**Sebab.** Dua batasan engine editor yang tidak terlihat dari typings, dan
-hanya muncul saat dijalankan sungguhan:
-
-1. Dua `insertParagraph()` dalam **satu batch** yang menyentuh paragraf jangkar
-   yang sama ditolak.
-2. Proxy `Paragraph` yang dikembalikan `insertParagraph()` **belum punya
-   alamat** sampai `context.sync()` berikutnya — jadi merantai
-   `.insertParagraph(..., "After")` pada hasilnya selalu gagal.
-
-**Perbaikan.** `insertOneByOne()` di `editor-api-utils.ts` menyisipkan paragraf
-satu per satu dengan `sync()` di antara masing-masing, dan penyisipan di awal
-dokumen dilakukan **terbalik** di `"Start"` supaya tidak perlu menyentuh proxy
-hasil sama sekali. Jangan gabungkan kembali jadi satu batch.
-
----
-
-## Dua mesin penerap edit
-
-Aplikasi ini punya dua implementasi untuk menerapkan edit AI, dipilih dari
-dropdown **Mesin edit** di toolbar. Keduanya menerima `EditOperation[]` yang
-sama dan mengembalikan `ApplyEditsResult` yang sama.
-
-### Kenapa perintah beralamat gagal di mesin `core`
+### Kenapa perintah beralamat gagal
 
 `DocEdits` di `@docx-editor.dev/core` mendeklarasikan perintah beralamat
-(`replaceText { target, text }` dan seterusnya). Terlihat seperti pengganti
-langsung untuk `editor-api` — tapi **semuanya ditolak editor hidup**:
+(`replaceText { target, text }` dan seterusnya), tetapi semuanya ditolak editor
+hidup:
 
 ```
 exec({ type: "replaceText", target, text })
@@ -246,12 +176,10 @@ exec({ type: "splitParagraph" })
   -> "command 'splitParagraph' is not supported by the tree editor"
 ```
 
-Perintah beralamat itu dilayani host AUTOMATION — yaitu paket `editor-api`
-yang berlisensi evaluasi. Editor hidup hanya bekerja pada **seleksi**. Petunjuk
-ini sebenarnya ada di typings: `EditorCommandShape<T>` meng-`Omit` field
-`target`.
+Editor hidup hanya bekerja pada **seleksi**. Petunjuk ini ada di typings:
+`EditorCommandShape<T>` meng-`Omit` field `target`.
 
-### Resep yang benar untuk mesin `core`
+### Resep yang benar
 
 ```ts
 const [match] = editor.findMatches(text, { matchCase: true });
@@ -269,7 +197,7 @@ Dua satuan yang gampang salah:
 - `toggleMark` membalik keadaan, jadi baca `query({ type: "selectionFormatting" })`
   dulu — kalau sudah bold dan diminta bold, memanggilnya justru mematikannya.
 
-### Menyisipkan teks di mesin `core`
+### Menyisipkan teks
 
 `insertText` **menimpa** seleksi, dan tidak ada cara menaruh caret lewat API.
 Jadi menyisipkan tanpa menghapus apa pun berarti menulis ULANG teks jangkarnya:
@@ -490,5 +418,5 @@ curl -s localhost:3000/api/health          # status API key
 ```
 
 Untuk error runtime, buka DevTools → Console. Log aplikasi berprefiks nama
-modulnya: `[useAIChat]`, `[docx-parser]`, `[editor-api-utils]`,
+modulnya: `[useAIChat]`, `[docx-parser]`, `[editor-core-utils]`,
 `[DocxEditorViewer]`, `[api/ai-edit]`.

@@ -41,7 +41,7 @@ teks tidak ditemukan."*
 |---|---|
 | Framework | Next.js 16 (App Router) · React 19 |
 | Editor | `@docx-editor.dev/react` (Apache-2.0) |
-| Penerap edit | dua mesin, bisa ditukar — lihat di bawah |
+| Penerap edit | `@docx-editor.dev/core` (Apache-2.0) |
 | AI | Gemini 3.6 Flash via `@google/genai` (function calling) |
 | Baca .docx | `mammoth` |
 | Tulis .docx | `docx` |
@@ -70,7 +70,7 @@ useRecentDocuments              │
   30 versi di IndexedDB          │
   maks. 4 favorit Quick Access   │
                                  │
-editor-api-utils                 │
+editor-core-utils                │
   terapkan EditOperation[]       │
 ```
 
@@ -83,7 +83,7 @@ klik Ringkas
   → mammoth             .docx → teks berstruktur
   → Gemini              function calling → EditOperation[]
   → validasi            call cacat dibuang, tidak merusak dokumen
-  → editor-api          terapkan ke dokumen hidup
+  → editor core         terapkan ke dokumen hidup
   → chat                "✅ 4 perubahan diterapkan."
 ```
 
@@ -133,7 +133,7 @@ src/
 │   ├── types.ts              kontrak bersama
 │   ├── gemini-client.ts      SERVER-ONLY
 │   ├── docx-parser.ts        SERVER-ONLY
-│   ├── editor-api-utils.ts   CLIENT-ONLY
+│   ├── editor-core-utils.ts  CLIENT-ONLY
 │   └── buffer-utils.ts       isomorphic
 └── stubs/node-module-browser.js   jangan dihapus — lihat SETUP.md
 ```
@@ -153,19 +153,11 @@ src/
 
 ---
 
-## Dua mesin penerap edit
+## Penerapan edit tanpa plugin berbayar
 
-Edit AI bisa diterapkan lewat salah satu dari dua jalur, dipilih dari dropdown
-**Mesin edit** di toolbar:
-
-| | `editor-api` | `core` |
-|---|---|---|
-| Lisensi | EigenPal Evaluation — **produksi berbayar** | Apache-2.0 — **bebas** |
-| Model | perintah beralamat, `runtime.run()` + `sync()` | berbasis SELEKSI |
-| replace / delete / format | ✅ | ✅ |
-| insert (menulis kalimat baru) | ✅ | ✅ sebagai BARIS, bukan paragraf baru |
-
-Jalur `core` memakai resep dua langkah:
+Semua edit AI diterapkan langsung dengan `@docx-editor.dev/core` yang
+berlisensi Apache-2.0. Aplikasi tidak memasang atau memuat plugin editor
+komersial. Editor core memakai resep dua langkah berbasis seleksi:
 
 ```ts
 const [match] = editor.findMatches(text, { matchCase: true });
@@ -173,14 +165,13 @@ editor.selectMatch(match);
 editor.exec({ type: "insertText", text: pengganti });  // menimpa seleksi
 ```
 
-**Kelima aksi AI berjalan penuh di kedua mesin.** Untuk penyisipan, mesin
-`core` memakai `insertBreak('line')` karena `splitParagraph` ditolak editor
-hidup — teks baru jadi BARIS di dalam paragraf, bukan paragraf `<w:p>`
-terpisah. Tampilannya nyaris identik, dan ini struktur Word yang sah: blok
-alamat surat justru berbentuk begitu.
+Seluruh aksi AI berjalan lewat jalur ini. Untuk penyisipan, editor core memakai
+`insertBreak('line')` karena `splitParagraph` ditolak editor hidup—teks baru
+menjadi baris di dalam paragraf, bukan paragraf `<w:p>` terpisah. Tampilannya
+nyaris identik dan tetap merupakan struktur Word yang sah.
 
 Detail lengkap beserta perintah apa saja yang ditolak editor hidup ada di
-[TROUBLESHOOTING](./docs/TROUBLESHOOTING.md#dua-mesin-penerap-edit).
+[TROUBLESHOOTING](./docs/TROUBLESHOOTING.md#penerapan-edit-dengan-editor-core).
 
 ---
 
@@ -194,7 +185,6 @@ Detail lengkap beserta perintah apa saja yang ditolak editor hidup ada di
 | Ukuran file | Maks 10 MB |
 | Kuota AI | 15/menit, 1.500/hari (free tier) |
 | Multi-user | Tidak ada |
-| Underline via AI | Tidak didukung `Font` di editor-api |
 | Target edit | Harus dalam satu baris — pencarian tidak melintasi paragraf |
 
 **Selalu Download sebelum menutup tab.**
@@ -210,7 +200,7 @@ Terbukti jalan end-to-end dengan API key sungguhan:
 - Gemini menghasilkan edit yang benar (3 kalimat salah → 3 perbaikan tepat,
   masing-masing dengan `find` verbatim)
 - Mode chat menjawab akurat atas dokumen bergambar dan berformat kompleks
-- **Edit AI benar-benar diterapkan ke dokumen hidup** lewat editor-api
+- **Edit AI benar-benar diterapkan ke dokumen hidup** lewat editor core
 - Perintah edit bebas dari chat (`mode: "edit"`) → 2 penggantian tepat
 - Mode Tanya menolak permintaan mengubah dan mengarahkan ke mode Ubah
 - Ketik → auto-save → restore setelah reload; Download menghasilkan .docx
@@ -219,9 +209,8 @@ Terbukti jalan end-to-end dengan API key sungguhan:
 
 ## Lisensi
 
-`@docx-editor.dev/core` Apache 2.0 · `@docx-editor.dev/editor-api`
-**EigenPal Pro Evaluation License 1.0** — evaluasi internal non-produksi.
-Hubungi EigenPal sebelum dipakai di produksi.
+Editor dan penerap edit menggunakan `@docx-editor.dev/core` berlisensi
+Apache-2.0. Tidak ada plugin editor berbayar/evaluasi yang dipasang.
 
 Dokumentasi: [SETUP](./docs/SETUP.md) · [API](./docs/API_REFERENCE.md) ·
 [TROUBLESHOOTING](./docs/TROUBLESHOOTING.md)

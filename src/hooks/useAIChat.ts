@@ -76,7 +76,7 @@ export interface UseAIChatOptions {
   /**
    * Dipanggil dengan edit hasil AI. Pemanggil (halaman editor) yang punya
    * instance editor, jadi penerapan edit dilakukan di sana lewat
-   * `applyEditsToDocument()`.
+   * `applyEditsWithCore()`.
    */
   onApplyEdits?: (edits: EditOperation[]) => Promise<ApplyEditsResult>;
 }

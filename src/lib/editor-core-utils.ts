@@ -3,12 +3,8 @@
 /**
  * editor-core-utils.ts
  * -----------------------------------------------------------------------------
- * Implementasi ALTERNATIF dari `editor-api-utils.ts`, memakai HANYA
- * `@docx-editor.dev/core` yang berlisensi Apache-2.0 — bebas dipakai di
- * produksi, tanpa perjanjian komersial.
- *
- * Signature-nya identik dengan `applyEditsToDocument()` sehingga keduanya bisa
- * ditukar lewat pemilih "Mesin edit" di halaman editor.
+ * Implementasi penerapan edit memakai HANYA `@docx-editor.dev/core` yang
+ * berlisensi Apache-2.0 — bebas dipakai di produksi tanpa plugin komersial.
  *
  * ============================================================================
  * MODEL EDITOR HIDUP: SELEKSI, BUKAN ALAMAT
@@ -27,8 +23,7 @@
  *     exec({ type: "deleteText", target })
  *       -> "DocTarget addressing is not supported; deletion removes the selection"
  *
- * Perintah beralamat itu dilayani host AUTOMATION — yaitu `editor-api`, paket
- * yang berbayar. Editor hidup hanya bekerja pada SELEKSI.
+ * Editor hidup hanya bekerja pada SELEKSI, bukan perintah beralamat.
  *
  * Jadi polanya selalu dua langkah: pindahkan seleksi ke target, lalu jalankan
  * perintah tanpa target.
@@ -41,7 +36,7 @@
  * berbasis seleksi inilah kontrak resminya.
  *
  * ============================================================================
- * CAKUPAN DIBANDING editor-api
+ * CAKUPAN EDIT
  * ============================================================================
  *
  *   replace  OK   seleksi + insertText (menimpa seleksi)
@@ -70,7 +65,7 @@ import {
 // Konstanta
 // =============================================================================
 
-/** Batas panjang teks pencarian, disamakan dengan implementasi editor-api. */
+/** Batas panjang teks pencarian yang diterima editor. */
 const MAX_SEARCH_CHARS = 255;
 
 /**

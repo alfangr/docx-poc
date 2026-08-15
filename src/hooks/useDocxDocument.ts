@@ -14,7 +14,7 @@
  *
  * Pembagian tanggung jawab:
  * - Hook ini      -> buffer dokumen, metadata, persistensi.
- * - editor-api-utils -> menerapkan perubahan ke editor yang sedang tampil.
+ * - editor-core-utils -> menerapkan perubahan ke editor yang sedang tampil.
  * - useAIChat     -> percakapan dan pemanggilan AI.
  */
 

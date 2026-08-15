@@ -73,7 +73,7 @@ export interface DocxEditorViewerProps {
   onSelectionChange?: (text: string) => void;
 
   /**
-   * Menyerahkan instance editor ke atas. Dibutuhkan `applyEditsToDocument()`
+   * Menyerahkan instance editor ke atas. Dibutuhkan `applyEditsWithCore()`
    * untuk menerapkan hasil AI. Dipanggil `null` saat editor dilepas.
    */
   onEditorReady?: (editor: DocxEditorInstance | null) => void;

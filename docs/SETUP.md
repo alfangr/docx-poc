@@ -166,10 +166,7 @@ tetap harus bisa me-resolve-nya. Tanpa alias ini, **build gagal** dengan
 
 ## Catatan lisensi
 
-- `@docx-editor.dev/core` — Apache 2.0, bebas dipakai
-- `@docx-editor.dev/editor-api` — **EigenPal Pro Evaluation License 1.0**
+- `@docx-editor.dev/core` — Apache-2.0, dipakai untuk editor dan penerapan edit
+- Tidak ada plugin editor berbayar/evaluasi yang dipasang
 
-Editor-API dipakai untuk menerapkan hasil edit AI ke dokumen. Lisensinya
-mengizinkan pemakaian internal non-produksi untuk evaluasi. Tidak ada gerbang
-lisensi teknis di dalam paketnya — batasannya legal. **Untuk produksi,
-hubungi EigenPal lebih dulu.**
+Hasil edit AI diterapkan langsung lewat API berbasis seleksi milik editor core.

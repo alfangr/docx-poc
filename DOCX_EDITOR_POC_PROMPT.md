@@ -15,7 +15,7 @@ Kamu akan membantu saya membuat POC (Proof of Concept) untuk aplikasi DOCX edito
 
 **Tech Stack:**
 - Framework: Next.js 14+ (App Router)
-- Editor: `@docx-editor.dev/react` + `@docx-editor.dev/editor-api`
+- Editor: `@docx-editor.dev/react` + `@docx-editor.dev/core` (Apache-2.0)
 - AI: Google Gemini API (Free tier - 2.5 Flash model)
 - Styling: Tailwind CSS
 - Storage: Temporary in-memory (can add file upload later)
@@ -67,7 +67,7 @@ docx-editor-poc/
 │   ├── lib/
 │   │   ├── gemini-client.ts         # Gemini API wrapper
 │   │   ├── docx-parser.ts           # Extract text dari DOCX
-│   │   ├── editor-api-utils.ts      # Editor-API helpers
+│   │   ├── editor-core-utils.ts     # Core editor helpers
 │   │   └── types.ts                 # TypeScript types/interfaces
 │   │
 │   ├── hooks/
@@ -99,7 +99,7 @@ npx create-next-app@latest docx-editor-poc --typescript --tailwind --app
 cd docx-editor-poc
 
 # 3. Install DOCX Editor dependencies
-npm install @docx-editor.dev/react @docx-editor.dev/core @docx-editor.dev/editor-api
+npm install @docx-editor.dev/react @docx-editor.dev/core
 
 # 4. Install Gemini AI SDK
 npm install @google/generative-ai
@@ -202,7 +202,7 @@ export interface UploadResponse {
 ```typescript
 // Wrapper untuk Gemini API dengan function calling support
 // Handle tool definitions untuk DOCX editing operations
-// Return structured edits yang bisa diapply ke editor-api
+// Return structured edits yang bisa diterapkan ke editor core
 
 export async function editDocumentWithAI(
   docContent: string,
@@ -283,26 +283,15 @@ export async function getDocumentStructure(docBuffer: ArrayBuffer): Promise<Docu
 export async function getSelectedTextContext(docBuffer: ArrayBuffer, selectedText: string): Promise<string>
 ```
 
-### **4. `src/lib/editor-api-utils.ts` - Editor-API Helpers**
+### **4. `src/lib/editor-core-utils.ts` - Core Editor Helpers**
 
 ```typescript
-// Wrapper functions untuk @docx-editor.dev/editor-api/browser
-// Untuk apply changes dari Gemini ke document
+// Functions berbasis seleksi untuk menerapkan perubahan lewat editor core
 
-export async function applyEditsToDocument(
-  editorRef: any,
+export async function applyEditsWithCore(
+  editor: DocxEditorInstance,
   edits: EditOperation[]
-): Promise<void>
-
-export async function applyEditOperation(
-  context: any,
-  edit: EditOperation
-): Promise<void>
-
-// Handle specific operations
-export async function insertText(context: any, index: number, text: string)
-export async function replaceText(context: any, find: string, replace: string)
-export async function formatText(context: any, index: number, formatting: any)
+): Promise<ApplyEditsResult>
 ```
 
 ### **5. `src/hooks/useDocxEditor.ts` - Editor State Management**
@@ -607,7 +596,7 @@ Click AI Action  User message
            ↓
      Return EditOperations
            ↓
-     Editor-API apply changes
+     Editor core apply changes
            ↓
      Update DocxEditor
            ↓

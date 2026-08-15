@@ -9,7 +9,7 @@
  *   useDocxDocument   -> buffer dokumen, nama file, dirty, auto-save
  *   DocxEditorViewer  -> editor hidup; memegang dokumen setelah mount
  *   useAIChat         -> percakapan, rate limit, pemanggilan API
- *   applyEditsToDocument -> menerapkan hasil AI ke editor
+ *   applyEditsWithCore -> menerapkan hasil AI ke editor
  *
  * Dua aturan yang menjaga integrasi ini tetap benar:
  *
@@ -33,9 +33,8 @@ import { RecentGeneratedPanel } from "@/components/RecentGeneratedPanel";
 import { useAIChat } from "@/hooks/useAIChat";
 import { useDocxDocument } from "@/hooks/useDocxDocument";
 import { useRecentDocuments } from "@/hooks/useRecentDocuments";
-import { applyEditsToDocument } from "@/lib/editor-api-utils";
 import { applyEditsWithCore } from "@/lib/editor-core-utils";
-import type { EditEngine, EditOperation } from "@/lib/types";
+import type { EditOperation } from "@/lib/types";
 import type { DocxEditorInstance } from "@docx-editor.dev/core/editor";
 
 type SidebarTab = "chat" | "recent";
@@ -54,19 +53,6 @@ export default function EditorPage() {
   const [isEditorReady, setIsEditorReady] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  /**
-   * Mesin yang menerapkan edit AI ke dokumen.
-   *
-   * Default `core` — Apache-2.0, bebas dipakai di produksi. `editor-api`
-   * (berbayar, butuh perjanjian komersial) masih dipertahankan sebagai
-   * pilihan di selector untuk perbandingan, belum dihapus.
-   *
-   * Disimpan di ref DAN state: ref dibaca `handleApplyEdits` tanpa membuat
-   * identitas callback-nya berubah, state dipakai untuk merender pemilihnya.
-   */
-  const [editEngine, setEditEngine] = useState<EditEngine>("core");
-  const editEngineRef = useRef<EditEngine>("core");
 
   // ---------------------------------------------------------------------------
   // Jembatan editor  (semua di-memo — lihat aturan 1 di header)
@@ -132,11 +118,7 @@ export default function EditorPage() {
       throw new Error("Editor belum siap menerima perubahan.");
     }
 
-    // Kedua mesin punya signature identik, jadi cukup dipilih di sini.
-    const apply =
-      editEngineRef.current === "core" ? applyEditsWithCore : applyEditsToDocument;
-
-    const result = await apply(editor, edits);
+    const result = await applyEditsWithCore(editor, edits);
 
     // Tandai dirty seketika. Event `change` dari editor juga akan memicunya,
     // tapi lewat debounce 800ms — indikator status tidak boleh menunggu selama itu.
@@ -247,28 +229,6 @@ export default function EditorPage() {
             aria-hidden="true"
             tabIndex={-1}
           />
-
-          {/* Pemilih mesin edit — alat uji, bukan fitur untuk end user.
-              Hapus blok ini setelah salah satu mesin dipilih permanen. */}
-          <label className="flex items-center gap-1.5 text-xs text-slate-500">
-            <span className="hidden sm:inline">Mesin edit</span>
-            <select
-              value={editEngine}
-              onChange={(event) => {
-                const next = event.target.value as EditEngine;
-                setEditEngine(next);
-                editEngineRef.current = next;
-              }}
-              className="
-                rounded-md border border-slate-200 bg-white px-2 py-1 text-xs
-                font-medium text-slate-700
-                focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400
-              "
-            >
-              <option value="editor-api">editor-api (berbayar)</option>
-              <option value="core">core (Apache-2.0)</option>
-            </select>
-          </label>
 
           <ToolbarButton onClick={() => fileInputRef.current?.click()}>
             Upload
